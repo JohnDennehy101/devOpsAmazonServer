@@ -5,7 +5,8 @@ from botocore.exceptions import ClientError
 import logging
 import requests
 from time import gmtime
-import subprocess
+import time
+import paramiko
 
 serverCommands = """#!/bin/bash 
 yum update -y 
@@ -91,5 +92,13 @@ def upload_file(file_name, bucket, object_name=None):
 #create_bucket(s3BucketName, 'eu-west-1')
 #upload_file('./imageToBeUploaded.jpg', s3BucketName, 'webSiteImage.jpg')
 
-sshCommand = "ssh -o StrictHostKeyChecking=no -i credentials.pem ec2-user" + instanceIpAddress + " 'pwd' "
+sshCommand = "ssh -o StrictHostKeyChecking=no -i ~/aws/credentials/credentials.pem ec2-user@" + instanceIpAddress
 print(sshCommand)
+sshClient = paramiko.SSHClient()
+sshClient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+sshPrivateKey = paramiko.RSAKey.from_private_key_file('./credentials.pem')
+time.sleep(60)
+
+sshClient.connect(hostname=instanceIpAddress, username='ec2-user', pkey=sshPrivateKey)
+sshClient.exec_command('pwd')
+
