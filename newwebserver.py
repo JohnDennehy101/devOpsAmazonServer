@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import boto3
+import requests
 
 serverCommands = """#!/bin/bash 
 yum update -y 
@@ -28,3 +29,9 @@ new_instance = ec2.create_instances(
         },
     ],)
 print (new_instance[0].id)
+
+imageUrl = 'http://devops.witdemo.net/image.jpg'
+imageContent = requests.get(imageUrl).content
+
+with open('./imageToBeUploaded.jpg', 'wb') as handleImageData:
+    handleImageData.write(imageContent)
