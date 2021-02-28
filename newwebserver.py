@@ -100,5 +100,15 @@ sshPrivateKey = paramiko.RSAKey.from_private_key_file('./credentials.pem')
 time.sleep(60)
 
 sshClient.connect(hostname=instanceIpAddress, username='ec2-user', pkey=sshPrivateKey)
-sshClient.exec_command('pwd')
+shellCommand = """
+echo "Hello World" > index.html
+sudo mv index.html /var/www/html/index.html
+ """
+
+stdin, stdout, stderr = sshClient.exec_command(shellCommand)
+print(stdout.read())
+print(stderr.read())
+
+
+sshClient.close()
 
