@@ -14,6 +14,62 @@ yum install httpd -y
 systemctl enable httpd 
 systemctl start httpd"""
 ec2 = boto3.resource('ec2')
+
+ec2Client = boto3.client('ec2')
+
+# filters = [ {
+#     'Name': 'name',
+#     'Values': ['amzn-ami-hvm-*']
+# },{
+#     'Name': 'description',
+#     'Values': ['Amazon Linux AMI*']
+# },{
+#     'Name': 'architecture',
+#     'Values': ['x86_64']
+# },{
+#     'Name': 'owner-alias',
+#     'Values': ['amazon']
+# },{
+#     'Name': 'owner-id',
+#     'Values': ['137112412989']
+# },{
+#     'Name': 'state',
+#     'Values': ['available']
+# },{
+#     'Name': 'root-device-type',
+#     'Values': ['ebs']
+# },{
+#     'Name': 'virtualization-type',
+#     'Values': ['hvm']
+# },{
+#     'Name': 'hypervisor',
+#     'Values': ['xen']
+# },{
+#     'Name': 'image-type',
+#     'Values': ['machine']
+# } ]
+
+
+# response = ec2Client.describe_images(
+#     Filters=filters,
+#      Owners=[
+#       'amazon'
+#   ]
+# )
+
+# print(response)
+
+#instance_type= response['InstanceTypes'][0]['InstanceType']
+
+# responseTest= ec2Client.describe_images(
+#    Filters=[{'Name': 'name', 'Values': [instance_type]},],
+  
+# )
+
+#print(responseTest)
+
+
+
 print("Starting instance")
 new_instance = ec2.create_instances(
                                     ImageId='ami-0fc970315c2d38f01',
@@ -37,7 +93,25 @@ new_instance = ec2.create_instances(
 
 new_instance[0].wait_until_running()
 print (new_instance[0].id)
+
+
+
+
+while True:
+    allInstances = ec2.meta.client.describe_instance_status()['InstanceStatuses']
+    instanceJustCreated = allInstances[len(allInstances) - 1]
+    print(instanceJustCreated)
+    instanceStatus = instanceJustCreated['InstanceStatus']['Details'][0]['Status']
+    print(instanceJustCreated['InstanceStatus']['Details'][0]['Status'])
+    if instanceStatus != 'passed':
+        time.sleep(15)
+    else:
+        break
+
+
+
 new_instance[0].reload()
+
 print(new_instance[0].public_ip_address)
 instanceIpAddress = new_instance[0].public_ip_address
 
@@ -97,12 +171,37 @@ print(sshCommand)
 sshClient = paramiko.SSHClient()
 sshClient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 sshPrivateKey = paramiko.RSAKey.from_private_key_file('./credentials.pem')
-time.sleep(60)
+#time.sleep(60)
 
-sshClient.connect(hostname=instanceIpAddress, username='ec2-user', pkey=sshPrivateKey)
+
+def sshConnection(ssh, ip, numberOfAttempts):
+    if numberOfAttempts > 3:
+        return False
+    sshPrivateKey = paramiko.RSAKey.from_private_key_file('./credentials.pem')
+    interval = 20
+    try:
+        numberOfAttempts += 1
+        print('SSH into the instance: {}'.format(ip))
+        ssh.connect(hostname=ip,
+                    username='ec2-user', pkey=sshPrivateKey)
+        return True
+    except Exception as e:
+        print(e)
+        time.sleep(interval)
+        print('Retrying SSH connection to {}'.format(ip))
+        sshConnection(ssh, ip, numberOfAttempts)
+
+
+sshConnection(sshClient, instanceIpAddress, 0)
+       
+
+
+
+#sshClient.connect(hostname=instanceIpAddress, username='ec2-user', pkey=sshPrivateKey)
 shellCommand = """
 echo "Hello World" > index.html
-sudo mv index.html /var/www/html/index.html
+ls
+sudo mv index.html /var/www/html
  """
 
 stdin, stdout, stderr = sshClient.exec_command(shellCommand)
