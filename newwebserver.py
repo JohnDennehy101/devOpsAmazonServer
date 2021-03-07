@@ -16,6 +16,7 @@ systemctl start httpd"""
 ec2 = boto3.resource('ec2')
 
 ec2Client = boto3.client('ec2')
+s3_Client = boto3.client('s3')
 
 # filters = [ {
 #     'Name': 'name',
@@ -122,8 +123,7 @@ with open('./imageToBeUploaded.jpg', 'wb') as handleImageData:
     handleImageData.write(imageContent)
 
 
-currentTime = gmtime()
-s3BucketName = 'imagebucket.' + str(currentTime.tm_mday) + '-' + str(currentTime.tm_mon) + '-' + str(currentTime.tm_year) + '.' + str(currentTime.tm_hour) + '.' + str(currentTime.tm_min) + '.' + str(currentTime.tm_sec)
+
 
 
 
@@ -163,10 +163,31 @@ def upload_file(file_name, bucket, object_name=None):
         return False
     return True
 
-#create_bucket(s3BucketName, 'eu-west-1')
-#upload_file('./imageToBeUploaded.jpg', s3BucketName, 'webSiteImage.jpg')
 
-sshCommand = "ssh -o StrictHostKeyChecking=no -i ~/aws/credentials/credentials.pem ec2-user@" + instanceIpAddress
+
+existingS3Buckets = s3_Client.list_buckets()
+s3BucketsList = existingS3Buckets['Buckets']
+
+s3BucketAlreadyCreated = False
+s3BucketName = ''
+
+for bucket in s3BucketsList:
+    if 'imagebucket' in bucket['Name']:
+        s3BucketAlreadyCreated = True
+        s3BucketName = bucket['Name']
+        break
+
+print(s3BucketAlreadyCreated)
+
+if s3BucketAlreadyCreated != True:
+    currentTime = gmtime()
+    s3BucketName = 'imagebucket.' + str(currentTime.tm_mday) + '-' + str(currentTime.tm_mon) + '-' + str(currentTime.tm_year) + '.' + str(currentTime.tm_hour) + '.' + str(currentTime.tm_min) + '.' + str(currentTime.tm_sec)
+    create_bucket(s3BucketName, 'eu-west-1')
+
+
+upload_file('./imageToBeUploaded.jpg', s3BucketName, 'webSiteImage.jpg')
+
+#sshCommand = "ssh -o StrictHostKeyChecking=no -i ~/aws/credentials/credentials.pem ec2-user@" + instanceIpAddress
 print(sshCommand)
 sshClient = paramiko.SSHClient()
 sshClient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
