@@ -206,8 +206,31 @@ imageUrl = 'https://s3-eu-west-1.amazonaws.com/' + str(bucketName) + '/' + str(o
 
 print(imageUrl)
 
-#sshCommand = "ssh -o StrictHostKeyChecking=no -i ~/aws/credentials/credentials.pem ec2-user@" + instanceIpAddress
-#print(sshCommand)
+testRequest = requests.get('http://' + str(instanceIpAddress) + '/latest/meta-data/instance-id')
+instance_id = testRequest.text
+print(instance_id)
+
+metadataUrl = 'http://{}/latest/meta-data/local-ipv4'.format(instanceIpAddress)
+print(metadataUrl)
+
+metadataShellCommand = """
+ssh -o StrictHostKeyChecking=no -i credentials.pem ec2-user@{}
+echo '<html>' > index.html
+echo 'Private IP address: ' >> index.html
+curl http://169.254.169.254/latest/meta-data/local-ipv4 >> index.html
+echo '<br>' >> index.html
+echo 'Availability Zone' >> index.html
+echo '<br>' >> index.html
+curl http://169.254.169.254/latest/meta-data/placement/availability-zone >> index.html
+echo 'MAC Address' >> index.html
+echo '<br>' >> index.html
+curl http://169.254.169.254/latest/meta-data/mac >> index.html
+echo 'HostName' >> index.html
+echo '<br>' >> index.html
+curl http://169.254.169.254/latest/meta-data/hostname >> index.html
+""".format(instanceIpAddress)
+
+print(metadataShellCommand)
 sshClient = paramiko.SSHClient()
 sshClient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 sshPrivateKey = paramiko.RSAKey.from_private_key_file('./credentials.pem')
@@ -258,6 +281,11 @@ sudo mv index.html /var/www/html
  """
 
 #stdin, stdout, stderr = sshClient.exec_command(shellCommand)
+stdin, stdout, stderr = sshClient.exec_command(metadataShellCommand)
+print(stdout.read())
+print(stderr.read())
+
+
 stdin, stdout, stderr = sshClient.exec_command(testShellCommand)
 print(stdout.read())
 print(stderr.read())
