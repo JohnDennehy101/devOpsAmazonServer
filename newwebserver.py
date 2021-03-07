@@ -17,6 +17,7 @@ ec2 = boto3.resource('ec2')
 
 ec2Client = boto3.client('ec2')
 s3_Client = boto3.client('s3')
+s3_Resource = boto3.resource('s3')
 
 # filters = [ {
 #     'Name': 'name',
@@ -187,8 +188,25 @@ if s3BucketAlreadyCreated != True:
 
 upload_file('./imageToBeUploaded.jpg', s3BucketName, 'webSiteImage.jpg')
 
+
+s3ImageBucketContents = s3_Resource.Bucket(s3BucketName).objects.all()
+
+testUrl = ''
+bucketName = ''
+objectName = ''
+
+for image in s3ImageBucketContents:
+    bucketName = image.bucket_name
+    objectName = image.key
+
+
+
+imageUrl = 'https://s3-eu-west-1.amazonaws.com/' + str(bucketName) + '/' + str(objectName)
+
+print(imageUrl)
+
 #sshCommand = "ssh -o StrictHostKeyChecking=no -i ~/aws/credentials/credentials.pem ec2-user@" + instanceIpAddress
-print(sshCommand)
+#print(sshCommand)
 sshClient = paramiko.SSHClient()
 sshClient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 sshPrivateKey = paramiko.RSAKey.from_private_key_file('./credentials.pem')
@@ -215,7 +233,14 @@ def sshConnection(ssh, ip, numberOfAttempts):
 
 sshConnection(sshClient, instanceIpAddress, 0)
        
+testShellCommand = """
+echo "<hr>Here is an image that I have stored on S3: <br>
+<img src={}>" >> index.html
+ls
+sudo mv index.html /var/www/html
+""".format(imageUrl)
 
+print(testShellCommand)
 
 
 #sshClient.connect(hostname=instanceIpAddress, username='ec2-user', pkey=sshPrivateKey)
@@ -225,7 +250,8 @@ ls
 sudo mv index.html /var/www/html
  """
 
-stdin, stdout, stderr = sshClient.exec_command(shellCommand)
+#stdin, stdout, stderr = sshClient.exec_command(shellCommand)
+stdin, stdout, stderr = sshClient.exec_command(testShellCommand)
 print(stdout.read())
 print(stderr.read())
 
