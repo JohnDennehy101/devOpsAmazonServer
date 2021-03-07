@@ -7,6 +7,7 @@ import requests
 from time import gmtime
 import time
 import paramiko
+import subprocess
 
 serverCommands = """#!/bin/bash 
 yum update -y 
@@ -74,7 +75,7 @@ s3_Resource = boto3.resource('s3')
 
 print("Starting instance")
 new_instance = ec2.create_instances(
-                                    ImageId='ami-0fc970315c2d38f01',
+                                    ImageId='ami-096f43ef67d75e998',
                                     MinCount=1,
                                     MaxCount=1,
                                     InstanceType='t2.nano',
@@ -242,7 +243,13 @@ sudo mv index.html /var/www/html
 
 print(testShellCommand)
 
+uploadMonitorFileCommand = 'scp -o StrictHostKeyChecking=no -i credentials.pem monitor.sh ec2-user@{}:.'.format(instanceIpAddress)
+adjustPermissionsMonitorFileCommand = 'ssh -o StrictHostKeyChecking=no -i credentials.pem ec2-user@{} "chmod 700 monitor.sh"'.format(instanceIpAddress)
+runMonitorFileCommand = 'ssh -o StrictHostKeyChecking=no -i credentials.pem ec2-user@{} "./monitor.sh"'.format(instanceIpAddress)
 
+ 
+
+print(uploadMonitorFileCommand)
 #sshClient.connect(hostname=instanceIpAddress, username='ec2-user', pkey=sshPrivateKey)
 shellCommand = """
 echo "Hello World" > index.html
@@ -257,4 +264,9 @@ print(stderr.read())
 
 
 sshClient.close()
+
+monitorFileUploadResponse = subprocess.run(uploadMonitorFileCommand, shell=True)
+adjustPermissionsFileUpload = subprocess.run(adjustPermissionsMonitorFileCommand, shell=True)
+executeMonitorFile = subprocess.run(runMonitorFileCommand, shell=True)
+print(monitorFileUploadResponse)
 
