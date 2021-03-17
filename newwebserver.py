@@ -519,7 +519,7 @@ elif optionSelected == 2:
                                  Period=int(period),                                             # 1 min intervals
                                  Statistics=['Average', 'Sum', 'Minimum', 'Maximum'])
 
-                print(cloudwatchCpuResponse)
+                
 
                 cloudwatchNetworkOutResponse = cpuNetworkOutMetric.get_statistics(StartTime = datetime.utcnow() - timedelta(**{'minutes': minutesInt}),   # 1 minute ago
                                  EndTime=datetime.utcnow(),                              # now
@@ -548,10 +548,16 @@ elif optionSelected == 2:
             minutesInt = int(duration)
            
            
-            print("Monitoring starting. Completion Time: " +  str(datetime.utcnow() + timedelta(**{'minutes': minutesInt})))
+            
             period = minutesInt * 60
-            instance.monitor()
-
+            try:
+                instance.monitor()
+            
+            except ClientError as e:
+                print("Instance not in monitorable state (terminated / unavailable). Exiting programme...")
+                exit()
+           
+            print("Monitoring starting. Completion Time: " +  str(datetime.utcnow() + timedelta(**{'minutes': minutesInt})))
             time.sleep(period)
             
        
