@@ -8,6 +8,7 @@ UPTIME=$(uptime |awk '{ print $3 $4 }')
 PROCESSES=$(expr $(ps -A | grep -c .) - 1)
 HTTPD_PROCESSES=$(ps -A | grep -c httpd)
 
+
 echo "Instance ID: $INSTANCE_ID"
 echo "Uptime: $UPTIME"
 echo "Memory utilisation: $MEMORYUSAGE"
