@@ -126,10 +126,10 @@ def upload_file(file_name, bucket, object_name=None):
     return True
 
 
-def sshConnection(ssh, ip, numberOfAttempts):
+def sshConnection(ssh, ip, numberOfAttempts, credentials):
     if numberOfAttempts > 3:
         return False
-    sshPrivateKey = paramiko.RSAKey.from_private_key_file('credentials.pem')
+    sshPrivateKey = paramiko.RSAKey.from_private_key_file('{}.pem'.format(credentials))
     interval = 30
     try:
         numberOfAttempts += 1
@@ -202,6 +202,10 @@ if optionSelected == 1:
                 key_pair = ec2.create_key_pair(KeyName=keyPairName)
                 KeyPairOut = str(key_pair.key_material)
                 outfile.write(KeyPairOut)
+                outfile.close()
+                editFilePermissions = 'chmod 700 ./{}.pem'.format(keyPairName)
+                subprocess.run(editFilePermissions, shell=True)
+                
                 validKeyPair = True
         else:
             print ("Valid credentials provided...")
@@ -223,15 +227,92 @@ if optionSelected == 1:
     else:
         print("Invalid input. Exiting Programme...")
         exit()
+    
 
+
+    securityGroupName = ''
+    newSecurityGroupOption = input("Do you want to create a new security group (Y / N): ")
+
+    if newSecurityGroupOption.upper() == 'Y':
+
+        validNewSecurityGroup = False
+
+        while not validNewSecurityGroup:
+            securityGroupName = input("Please enter the name of the new security group: ")
+            try:
+                response = ec2Client.describe_security_groups(GroupNames=[securityGroupName])
+            except ClientError as e:
+                validNewSecurityGroup = True
+                print("Valid new security group name...")
+        
+        newSecurityGroupDescription = input("Please enter the description for the new security group: ")
+
+
+        try:
+            newSecurityGroup = ec2Client.create_security_group( Description=newSecurityGroupDescription,GroupName=securityGroupName)
+
+
+
+            addingPermissionsSecurityGroupResponse = ec2Client.authorize_security_group_ingress(
+                GroupName=securityGroupName,IpPermissions=[
+                    {
+                        'FromPort': 80,
+                        'IpProtocol': 'tcp',
+                        'IpRanges': [
+                            {
+                                'CidrIp': '0.0.0.0/0',
+                                'Description': 'HTTP'
+                                },
+                                ],
+                                'ToPort': 80
+                                },
+                    {
+                        'FromPort': 22,
+                        'IpProtocol': 'tcp',
+                        'IpRanges': [
+                            {
+                                'CidrIp': '0.0.0.0/0',
+                                'Description': 'SSH'
+                                },
+                                ],
+                                'ToPort': 22
+                                }
+                                ])
+            print(addingPermissionsSecurityGroupResponse)
+
+        except ClientError as e:
+            print("Error creating new security group. Exiting programme....")
+        
+
+    
+
+    elif newSecurityGroupOption.upper() == 'N':
+        securityGroupName = input("Please enter the name of the existing security group to use: ")
+        try:
+            response = ec2Client.describe_security_groups(GroupNames=[securityGroupName])
+      
+        except ClientError as e:
+            
+            print("No security group found for that input. Exiting programme....")
+            exit()
+
+
+    
+
+    else:
+        print("Invalid Input provided. Exiting Programme....")
+        exit()
+
+    
 
     print("Starting instance")
+    print("-----------------")
     new_instance = ec2.create_instances(
                                     ImageId='ami-079d9017cb651564d',
                                     MinCount=1,
                                     MaxCount=1,
                                     InstanceType='t2.nano',
-                                    SecurityGroups=['httpssh'],
+                                    SecurityGroups=[securityGroupName],
                                     #KeyName='credentials',
                                     KeyName=keyPairName,
                                     UserData=serverCommands,
@@ -303,7 +384,7 @@ if optionSelected == 1:
     imageUrl = 'https://s3-eu-west-1.amazonaws.com/' + str(bucketName) + '/' + str(objectName)
     metadataUrl = 'http://{}/latest/meta-data/local-ipv4'.format(instanceIpAddress)
     metadataShellCommand = """
-    ssh -o StrictHostKeyChecking=no -i credentials.pem ec2-user@{}
+    ssh -o StrictHostKeyChecking=no -i {}.pem ec2-user@{}
     echo '<html>' > index.html
     echo '<b>Private IP address: </b>' >> index.html
     curl http://169.254.169.254/latest/meta-data/local-ipv4 >> index.html
@@ -317,14 +398,14 @@ if optionSelected == 1:
     echo '<b>HostName: </b>' >> index.html
     curl http://169.254.169.254/latest/meta-data/hostname >> index.html
     echo '<br>' >> index.html
-    """.format(instanceIpAddress)
+    """.format(keyPairName, instanceIpAddress)
 
     sshClient = paramiko.SSHClient()
     sshClient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    sshPrivateKey = paramiko.RSAKey.from_private_key_file('credentials.pem')
+    sshPrivateKey = paramiko.RSAKey.from_private_key_file('{}.pem'.format(keyPairName))
 
 
-    sshConnection(sshClient, instanceIpAddress, 0)
+    sshConnection(sshClient, instanceIpAddress, 0, keyPairName)
     configureServerShellCommand = """
     echo "<hr>Here is an image that I have stored on S3: <br>
     <img src={}>" >> index.html
@@ -332,27 +413,28 @@ if optionSelected == 1:
     sudo mv index.html /var/www/html
     """.format(imageUrl)
   
-    uploadMonitorFileCommand = 'scp -o StrictHostKeyChecking=no -i credentials.pem monitor.sh ec2-user@{}:.'.format(instanceIpAddress)
-    adjustPermissionsMonitorFileCommand = 'ssh -o StrictHostKeyChecking=no -i credentials.pem ec2-user@{} "chmod 700 monitor.sh"'.format(instanceIpAddress)
-    runMonitorFileCommand = 'ssh -o StrictHostKeyChecking=no -i credentials.pem ec2-user@{} "./monitor.sh"'.format(instanceIpAddress)
+    uploadMonitorFileCommand = 'scp -o StrictHostKeyChecking=no -i {}.pem monitor.sh ec2-user@{}:.'.format(keyPairName, instanceIpAddress)
+    adjustPermissionsMonitorFileCommand = 'ssh -o StrictHostKeyChecking=no -i {}.pem ec2-user@{} "chmod 700 monitor.sh"'.format(keyPairName, instanceIpAddress)
+    runMonitorFileCommand = 'ssh -o StrictHostKeyChecking=no -i {}.pem ec2-user@{} "./monitor.sh"'.format(keyPairName, instanceIpAddress)
    
     stdin, stdout, stderr = sshClient.exec_command(metadataShellCommand)
-    print(stdout.read())
-    print(stderr.read())
+    #print(stdout.read())
+    #print(stderr.read())
     
     time.sleep(10)
     stdin, stdout, stderr = sshClient.exec_command(configureServerShellCommand)
-    print(stdout.read())
-    print(stderr.read())
+    #print(stdout.read())
+    #print(stderr.read())
     sshClient.close()
     
     monitorFileUploadResponse = subprocess.run(uploadMonitorFileCommand, shell=True)
     adjustPermissionsFileUpload = subprocess.run(adjustPermissionsMonitorFileCommand, shell=True)
     executeMonitorFile = subprocess.run(runMonitorFileCommand, shell=True)
-    print(monitorFileUploadResponse)
     new_instance[0].monitor()  # Enables detailed monitoring on instance (1-minute intervals)
-
+    print("Commencing monitoring...")
+    print("------------------------")
     time.sleep(60) 
+  
 
   
     
@@ -360,7 +442,7 @@ if optionSelected == 1:
                                             MetricName='CPUUtilization',
                                             Dimensions=[{'Name':'InstanceId', 'Value':  new_instance[0].id}])
     
-    print(cpuMetricIterator)
+   
     cpuMetric = list(cpuMetricIterator)[0]    # extract first (only) element
 
     
@@ -422,6 +504,15 @@ elif optionSelected == 2:
 else:
     print('Exiting Programme....')
     exit()
+  
+    
+
+
+
+    # response = ec2Client.create_security_group(
+    # Description='string',
+    # GroupName='string',
+        
 
 
 
