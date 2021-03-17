@@ -9,6 +9,7 @@ import time
 import paramiko
 import subprocess
 from datetime import datetime, timedelta
+import os.path
 
 serverCommands = """#!/bin/bash 
 yum update -y 
@@ -176,6 +177,54 @@ userInput = userMenu()
 optionSelected = int(userInput)
 
 if optionSelected == 1:
+    keyPairName = ''
+    createSecurityGroup = input("Do you want to create a new keypair for the instance (Y / N): ")
+    if createSecurityGroup.upper() == 'Y':
+        
+        validKeyPair = False
+        
+        while not validKeyPair:
+            keyPairName = input("Please input the name of the keypair to be created: ")
+            keyPairAlreadyCreated = False
+            
+            try:
+                existingKeyPair = ec2Client.describe_key_pairs(KeyNames=[keyPairName])
+                keyPairAlreadyCreated = True
+                #keyPairName = existingKeyPairName
+                print('Key Pair already found for that input....')
+            except ClientError as e:
+                existingKeyPair = False
+
+
+            if not os.path.isfile('{}.pem'.format(keyPairName)) and not keyPairAlreadyCreated:
+                print ("File does not exist")
+                outfile = open('{}.pem'.format(keyPairName), 'w')
+                key_pair = ec2.create_key_pair(KeyName=keyPairName)
+                KeyPairOut = str(key_pair.key_material)
+                outfile.write(KeyPairOut)
+                validKeyPair = True
+        else:
+            print ("Valid credentials provided...")
+
+    elif createSecurityGroup.upper() == 'N':
+
+        validKeyPairProvided = False
+        while not validKeyPairProvided:
+            existingKeyPairName = input("Please input the name of the existing keypair file that you wish to use: ")
+            try:
+                existingKeyPair = ec2Client.describe_key_pairs(KeyNames=[existingKeyPairName])
+                validKeyPairProvided = True
+                keyPairName = existingKeyPairName
+                print('Valid Key Pair Found....')
+            except ClientError as e:
+                existingKeyPair = False
+                print('No Key Pair Found for that input. Please try again.')
+    
+    else:
+        print("Invalid input. Exiting Programme...")
+        exit()
+
+
     print("Starting instance")
     new_instance = ec2.create_instances(
                                     ImageId='ami-079d9017cb651564d',
@@ -183,7 +232,8 @@ if optionSelected == 1:
                                     MaxCount=1,
                                     InstanceType='t2.nano',
                                     SecurityGroups=['httpssh'],
-                                    KeyName='credentials',
+                                    #KeyName='credentials',
+                                    KeyName=keyPairName,
                                     UserData=serverCommands,
                                     TagSpecifications=[
                                        {
