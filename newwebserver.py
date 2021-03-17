@@ -290,6 +290,7 @@ if optionSelected == 1:
         securityGroupName = input("Please enter the name of the existing security group to use: ")
         try:
             response = ec2Client.describe_security_groups(GroupNames=[securityGroupName])
+            print('Valid Security Group Found....')
       
         except ClientError as e:
             
@@ -469,49 +470,171 @@ if optionSelected == 1:
     print("Average Network Out:", cloudwatchNetworkOutResponse['Datapoints'][0]['Average'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
 
 elif optionSelected == 2:
-    print('2')
-    existingInstanceId = input("Please input the instance number of the instance you are looking to monitor: ")
-    allInstances = ec2.meta.client.describe_instance_status()['InstanceStatuses']
 
-    validExistingInstanceId = False
-    for instance in allInstances:
-        if instance['InstanceId'] == existingInstanceId:
-            print('valid instance id')
-            validExistingInstanceId = True
-            break
+    userInputInstanceId = input("Please enter the instance ID you wish to monitor: ")
+    validInstanceId = ''
+
+    try:
+        validInstanceId = ec2Client.describe_instances(InstanceIds=[userInputInstanceId])
+        print("Instance found")
+        print(validInstanceId)
+    except ClientError as e:
+        print("No live instance found with that id. Exiting programme...")
+        exit()
+    
+
+
+    cpuMetricIterator = cloudwatch.metrics.filter(Namespace='AWS/EC2',
+                                            MetricName='CPUUtilization',
+                                            Dimensions=[{'Name':'InstanceId', 'Value':  userInputInstanceId}])
             
-    if validExistingInstanceId:
-        print('You can continue')  
+    cpuMetric = list(cpuMetricIterator)[0]    # extract first (only) element
 
 
+    cpuNetworkOutIterator = cloudwatch.metrics.filter(Namespace='AWS/EC2',
+                                            MetricName='NetworkOut',
+                                            Dimensions=[{'Name':'InstanceId', 'Value':  userInputInstanceId}])
+        
+    cpuNetworkOutMetric = list(cpuNetworkOutIterator)[0]    # extract first (only) element
+
+    print("SubMenu")
+    print("-------")
+
+    monitorType = input("Enter 1 for Historical Monitoring or 2 to start monitoring an instance: ")
+
+    if monitorType == '1':
+        duration = input("Please input the number of minutes that you want to monitor: ")
+        numberInputProvided = ensureNumberInput(duration)
+        
+        if numberInputProvided:
+            minutesInt = int(duration)
+           
+            period = minutesInt * 60
+            
+       
+
+            try:
+                cloudwatchCpuResponse = cpuMetric.get_statistics(StartTime = datetime.utcnow() - timedelta(**{'minutes': minutesInt}),   # 1 minute ago
+                                 EndTime=datetime.utcnow(),                              # now
+                                 Period=int(period),                                             # 1 min intervals
+                                 Statistics=['Average', 'Sum', 'Minimum', 'Maximum'])
+
+                print(cloudwatchCpuResponse)
+
+                cloudwatchNetworkOutResponse = cpuNetworkOutMetric.get_statistics(StartTime = datetime.utcnow() - timedelta(**{'minutes': minutesInt}),   # 1 minute ago
+                                 EndTime=datetime.utcnow(),                              # now
+                                 Period=int(period),                                             # 1 min intervals
+                                 Statistics=['Average', 'Sum', 'Minimum', 'Maximum'])
+            
+               
+            
+           
+        
+            except ClientError as e:
+                print('No data found for that timeframe. Exiting programme....')
+                exit()
+        
+        else:
+            print("Invalid option. Exiting programme....")
+            exit()
+
+    
+    elif monitorType == '2':
+        instance = ec2.Instance(userInputInstanceId)
+        duration = input("Please input the number of minutes that you want to monitor: ")
+        numberInputProvided = ensureNumberInput(duration)
+
+        if numberInputProvided:
+            minutesInt = int(duration)
+           
+           
+            print("Monitoring starting. Completion Time: " +  str(datetime.utcnow() + timedelta(**{'minutes': minutesInt})))
+            period = minutesInt * 60
+            instance.monitor()
+
+            time.sleep(period)
+            
+       
+
+            try:
+                cloudwatchCpuResponse = cpuMetric.get_statistics(StartTime = datetime.utcnow() - timedelta(**{'minutes': minutesInt}),   # 1 minute ago
+                                 EndTime=datetime.utcnow(),                              # now
+                                 Period=int(period),                                             # 1 min intervals
+                                 Statistics=['Average', 'Sum', 'Minimum', 'Maximum'])
+
+                
+                cpuDataReturned = cloudwatchCpuResponse['Datapoints']
+
+                if cpuDataReturned:
+                    print("Cpu data returned.")
+                else:
+                    print("Cpu data not returned.")
+
+                cloudwatchNetworkOutResponse = cpuNetworkOutMetric.get_statistics(StartTime = datetime.utcnow() - timedelta(**{'minutes': minutesInt}),   # 1 minute ago
+                                 EndTime=datetime.utcnow(),                              # now
+                                 Period=int(period),                                             # 1 min intervals
+                                 Statistics=['Average', 'Sum', 'Minimum', 'Maximum'])
+            
+              
+                networkDataReturned = cloudwatchNetworkOutResponse['Datapoints']
+               
+
+                if networkDataReturned:
+                    print("Network data returned.")
+                    print(networkDataReturned)
+                else:
+                    print("Network data not returned.")
+                
+
+
+            
+           
+        
+            except ClientError as e:
+                print('No data found for that timeframe. Exiting programme....')
+                exit()
+        
+        else:
+            print("Invalid option. Exiting programme....")
+            exit()
+
+
+    
     else:
-        print("No live instance found with that id. Please try again.") 
-        subprocess.run('python3 newwebserver.py',shell=True) 
-    # cpuMetricIterator = cloudwatch.metrics.filter(Namespace='AWS/EC2',
-    #                                         MetricName='CPUUtilization',
-    #                                         Dimensions=[{'Name':'InstanceId', 'Value':  'i-0a77e96b4a5de8b46'}])
-                                            
-    # cpuMetric = list(cpuMetricIterator)[0]    # extract first (only) element
-   
-    # cloudwatchCpuResponse = cpuMetric.get_statistics(StartTime = datetime.utcnow() - timedelta(**{'minutes': minutesInt}),   # 1 minute ago
-    #                              EndTime=datetime.utcnow(),                              # now
-    #                              Period=int(period),                                             # 1 min intervals
-    #                              Statistics=['Average', 'Sum', 'Minimum', 'Maximum'],
-    #                              Unit=['Bytes'])
+        print("Invalid option. Exiting programme....")
+
+    # print('2')
+    # existingInstanceId = input("Please input the instance number of the instance you are looking to monitor: ")
+    # allInstances = ec2.meta.client.describe_instance_status()['InstanceStatuses']
+
+    # validExistingInstanceId = False
+    # for instance in allInstances:
+    #     if instance['InstanceId'] == existingInstanceId:
+    #         print('valid instance id')
+    #         validExistingInstanceId = True
+    #         break
+            
+    # if validExistingInstanceId:
+    #     print('You can continue') 
+    
+
+
+    # else:
+    #     print("No live instance found with that id. Please try again.") 
+    #     subprocess.run('python3 newwebserver.py',shell=True) 
 
 
 
 else:
     print('Exiting Programme....')
+    
     exit()
   
     
 
 
 
-    # response = ec2Client.create_security_group(
-    # Description='string',
-    # GroupName='string',
+   
         
 
 
@@ -538,11 +661,7 @@ else:
 #                                  Unit=['Bytes'])
 
 
-# cloudwatchCpuResponse = cpuMetric.get_statistics(StartTime = datetime.utcnow() - timedelta(**{'minutes': minutesInt}),   # 1 minute ago
-#                                  EndTime=datetime.utcnow(),                              # now
-#                                  Period=int(period),                                             # 1 min intervals
-#                                  Statistics=['Average', 'Sum', 'Minimum', 'Maximum'],
-#                                  Unit=['Bytes'])
+
 
 
 
