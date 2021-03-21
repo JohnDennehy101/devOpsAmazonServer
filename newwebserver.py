@@ -517,9 +517,9 @@ if optionSelected == 1:
   
 
     # Informing user that monitoring is commencing.
-    print("Commencing monitoring...")
+    print("Commencing monitoring (2 minutes)...")
     print("------------------------")
-    time.sleep(60) 
+    time.sleep(120) 
   
 
   
@@ -540,6 +540,9 @@ if optionSelected == 1:
                                  Statistics=['Average'])
     
 
+    cpuDataReturned = cloudwatchCpuResponse['Datapoints']
+    
+
     # Setting up NetworkOut cloudwatch monitoring (note instance id passed as value in Dimensions)
     cpuNetworkOutIterator = cloudwatch.metrics.filter(Namespace='AWS/EC2',
                                             MetricName='NetworkOut',
@@ -555,14 +558,19 @@ if optionSelected == 1:
                                  EndTime=datetime.utcnow(),                              # now
                                  Period=60,                                             # 1 min intervals
                                  Statistics=['Average'])
+    
+    networkDataReturned = cloudwatchNetworkOutResponse['Datapoints']
 
 
 
     # Monitoring results outputted to user
-    print("Monitoring of New Instance (Last 60 Seconds)")
-    print("--------------------------")
-    print ("Average CPU utilisation:", cloudwatchCpuResponse['Datapoints'][0]['Average'], cloudwatchCpuResponse['Datapoints'][0]['Unit'])
-    print("Average Network Out:", cloudwatchNetworkOutResponse['Datapoints'][0]['Average'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
+    if cpuDataReturned and networkDataReturned:
+        print("Monitoring of New Instance (Last 60 Seconds)")
+        print("--------------------------")
+        print ("Average CPU utilisation:", cloudwatchCpuResponse['Datapoints'][0]['Average'], cloudwatchCpuResponse['Datapoints'][0]['Unit'])
+        print("Average Network Out:", cloudwatchNetworkOutResponse['Datapoints'][0]['Average'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
+    else:
+        print("Data not returned from last 60 seconds. Longer duration needed for instance.")
 
 
 # If user has chosen 2 from main menu, they want to monitor an existing ec2 instance
