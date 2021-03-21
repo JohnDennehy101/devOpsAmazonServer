@@ -384,6 +384,9 @@ if optionSelected == 1:
     # Instance is reloaded to ensure that public ip address can be obtained
     new_instance[0].reload()
 
+    # Initiating monitoring on new instance
+    new_instance[0].monitor()
+
     # instance ip address stored in instanceIpAddress variable
     instanceIpAddress = new_instance[0].public_ip_address
 
@@ -511,9 +514,7 @@ if optionSelected == 1:
 
     # Executing monitor.sh file
     executeMonitorFile = subprocess.run(runMonitorFileCommand, shell=True)
-
-    # Initiating monitoring on new instance
-    new_instance[0].monitor()  # Enables detailed monitoring on instance (1-minute intervals)
+  
 
     # Informing user that monitoring is commencing.
     print("Commencing monitoring...")
@@ -761,14 +762,14 @@ elif optionSelected == 2:
                 if networkDataReturned:
                     print("Network data returned.")
                     print("----------------------")
-                    print("CPU Cloudwatch Data")
+                    print("Network Out Cloudwatch Data")
                     print("--------")
-                    print ("Average CPU utilisation:", cloudwatchCpuResponse['Datapoints'][0]['Average'], cloudwatchCpuResponse['Datapoints'][0]['Unit'])
-                    print("CPU Utilization Sum:", cloudwatchCpuResponse['Datapoints'][0]['Sum'], cloudwatchCpuResponse['Datapoints'][0]['Unit'])
-                    print("CPU Utilization Max:", cloudwatchCpuResponse['Datapoints'][0]['Maximum'], cloudwatchCpuResponse['Datapoints'][0]['Unit'])
-                    print("CPU Utilization Min:", cloudwatchCpuResponse['Datapoints'][0]['Minimum'], cloudwatchCpuResponse['Datapoints'][0]['Unit'])
+                    print ("Average Network Out:", cloudwatchNetworkOutResponse['Datapoints'][0]['Average'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
+                    print("Sum Network Out:", cloudwatchNetworkOutResponse['Datapoints'][0]['Sum'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
+                    print("Max Network Out:", cloudwatchNetworkOutResponse['Datapoints'][0]['Maximum'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
+                    print("Min Network Out:", cloudwatchNetworkOutResponse['Datapoints'][0]['Minimum'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
                     print("--------")
-                    print(networkDataReturned)
+                    
                 else:
                     print("Network data not returned.")
                 
