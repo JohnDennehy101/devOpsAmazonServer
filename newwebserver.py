@@ -640,13 +640,18 @@ elif optionSelected == 2:
                                  Period=int(period),                                            
                                  Statistics=['Average', 'Sum', 'Minimum', 'Maximum'])
 
-                print("CPU Cloudwatch Data")
-                print("--------")
-                print ("Average CPU utilisation:", cloudwatchCpuResponse['Datapoints'][0]['Average'], cloudwatchCpuResponse['Datapoints'][0]['Unit'])
-                print("CPU Utilization Sum:", cloudwatchCpuResponse['Datapoints'][0]['Sum'], cloudwatchCpuResponse['Datapoints'][0]['Unit'])
-                print("CPU Utilization Max:", cloudwatchCpuResponse['Datapoints'][0]['Maximum'], cloudwatchCpuResponse['Datapoints'][0]['Unit'])
-                print("CPU Utilization Min:", cloudwatchCpuResponse['Datapoints'][0]['Minimum'], cloudwatchCpuResponse['Datapoints'][0]['Unit'])
-                print("--------")
+                cpuDataReturned = cloudwatchCpuResponse['Datapoints']
+
+                if cpuDataReturned:
+                    print("CPU Cloudwatch Data")
+                    print("--------")
+                    print ("Average CPU utilisation:", cloudwatchCpuResponse['Datapoints'][0]['Average'], cloudwatchCpuResponse['Datapoints'][0]['Unit'])
+                    print("CPU Utilization Sum:", cloudwatchCpuResponse['Datapoints'][0]['Sum'], cloudwatchCpuResponse['Datapoints'][0]['Unit'])
+                    print("CPU Utilization Max:", cloudwatchCpuResponse['Datapoints'][0]['Maximum'], cloudwatchCpuResponse['Datapoints'][0]['Unit'])
+                    print("CPU Utilization Min:", cloudwatchCpuResponse['Datapoints'][0]['Minimum'], cloudwatchCpuResponse['Datapoints'][0]['Unit'])
+                    print("--------")
+                else:
+                    print("No cpu data returned")
 
 
                 
@@ -658,14 +663,18 @@ elif optionSelected == 2:
                                  Period=int(period),                                            
                                  Statistics=['Average', 'Sum', 'Minimum', 'Maximum'])
 
-                
-                print("Network Out Cloudwatch Data")
-                print("--------")
-                print ("Average Network Out:", cloudwatchNetworkOutResponse['Datapoints'][0]['Average'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
-                print("Network Out Sum:", cloudwatchNetworkOutResponse['Datapoints'][0]['Sum'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
-                print("Network Out Max:", cloudwatchNetworkOutResponse['Datapoints'][0]['Maximum'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
-                print("Network Out Min:", cloudwatchNetworkOutResponse['Datapoints'][0]['Minimum'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
-                print("--------")
+                networkDataReturned = cloudwatchNetworkOutResponse['Datapoints']
+
+                if networkDataReturned:
+                    print("Network Out Cloudwatch Data")
+                    print("--------")
+                    print ("Average Network Out:", cloudwatchNetworkOutResponse['Datapoints'][0]['Average'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
+                    print("Network Out Sum:", cloudwatchNetworkOutResponse['Datapoints'][0]['Sum'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
+                    print("Network Out Max:", cloudwatchNetworkOutResponse['Datapoints'][0]['Maximum'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
+                    print("Network Out Min:", cloudwatchNetworkOutResponse['Datapoints'][0]['Minimum'], cloudwatchNetworkOutResponse['Datapoints'][0]['Unit'])
+                    print("--------")
+                else:
+                    print("No network out data returned")
             
                
             
